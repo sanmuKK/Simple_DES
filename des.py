@@ -1,5 +1,4 @@
 from table import ip, ip_, pc1, pc2, table_e, table_p, s_box
-secret_key = []
 
 
 def change_hex_to_bin(s):
@@ -40,57 +39,79 @@ def func_f(right, key):
     return str(result)
 
 
-def generate_secret(key_left, key_right):
-    key_left = move(key_left, -1)
-    key_right = move(key_right, -1)
-    key = translation(key_left + key_right, pc2)
-    secret_key.append(key)
-    return key_left, key_right, key
-
-
-def wheel_structure(left, right, key_left, key_right, r, ty):
-    for i in range(0, r):
-        if ty == 1:
-            key_left, key_right, key = generate_secret(key_left, key_right)
-        else:
-            key = secret_key[-1]
-            secret_key.pop()
-        temp2 = right
-        right = xor(left, func_f(right, key))
-        left = temp2
-    return left, right
-
-
-def encode(plain_text, r, current_key, ty):
-    plain_text = change_hex_to_bin(plain_text)
-    plain_text = translation(plain_text, ip)
-    cipher_text = ''
-    left = plain_text[:32]
-    right = plain_text[32:]
-    current_key_bin = bin(int(str(current_key), 16))[2:].rjust(64, '0')
+def generate_secret(key, r):
+    current_key_bin = bin(int(str(key), 16))[2:].rjust(64, '0')
     current_key_bin = translation(current_key_bin, pc1)
     key_left = current_key_bin[:28]
     key_right = current_key_bin[28:]
-    left, right = wheel_structure(left, right, key_left, key_right, r, ty)
+    for i in range(0, r):
+        key_left = move(key_left, -1)
+        key_right = move(key_right, -1)
+        key = translation(key_left + key_right, pc2)
+        secret_key.append(key)
+
+
+def wheel_structure(left, right, current_round, types):
+    if types == 1:
+        key = secret_key[current_round]
+    else:
+        key = secret_key[-(current_round+1)]
+    temp2 = right
+    right = xor(left, func_f(right, key))
+    left = temp2
+    return left, right
+
+
+def encode(plain_texts, rounds, key, types):
+    generate_secret(key, rounds)
+    plain_texts = change_hex_to_bin(plain_texts)
+    plain_texts = translation(plain_texts, ip)
+    cipher_text = ''
+    left = plain_texts[:32]
+    right = plain_texts[32:]
+    for i in range(0, rounds):
+        left, right = wheel_structure(left, right, i, types)
     cipher_text += right + left
     cipher_text = translation(cipher_text, ip_)
     cipher_text = hex(int(cipher_text, 2))[2:].upper().rjust(16, '0')
     return cipher_text
 
 
-def main():
-    # a = input('请输入要加密的16个十六进制数字符串:')
-    # key = input('请输入加密密钥(16个十六进制数字符串:)')
-    # r = input('请输入加密轮数:')
-    r = 16
-    a = '123A06C0AFE0910F'
-    key = '216AFE9B4106DCC0'
-    print('要加密的明文为：', a)
-    a = encode(a, r, key, 1)
-    print('密文：', a)
-    a = encode(a, r, key, 0)
-    print('解密后的明文：', a)
+def main(texts, s_key, s_rounds, ty):
+    c_texts = ''
+    if ty == 1:
+        print('要加密的明文为：', texts)
+        for i in range(0, len(texts), 16):
+            c_texts += encode(texts[i:i+16].ljust(16, '0').upper(), int(s_rounds), s_key, ty)
+        print('密文：', c_texts)
+    else:
+        print('要解密的密文为：', texts)
+        for i in range(0, len(texts), 16):
+            c_texts += encode(texts[i:i+16].ljust(16, '0').upper(), int(s_rounds), s_key, ty)
+        print('明文：', c_texts)
+    return c_texts
 
 
 if __name__ == '__main__':
-    main()
+    secret_key = []
+    path = ''
+    types1 = int(input('加密or解密(加密:1,解密:2)'))
+    types2 = int(input('字符串or文件(字符串:1,文件:2)'))
+    if types2 == 1:
+        if types1 == 1:
+            plain_text = input('请输入要加密的明文(16的倍数个十六进制数字符串):')
+        else:
+            plain_text = input('请输入要解密的密文(16的倍数个十六进制数字符串):')
+    else:
+        path = input('请输入文件的路径(文件内容必须为16的倍数个十六进制数字符串):')
+        with open(path, 'r') as pl:
+            plain_text = pl.read()
+    if types1 == 1:
+        keys = input('请输入加密密钥(16个十六进制数字符串):')
+    else:
+        keys = input('请输入解密密钥(16个十六进制数字符串):')
+    round_s = input('请输入轮数:')
+    text = main(plain_text, keys, round_s, types1)
+    if types2 != 1:
+        with open(path, 'w') as pl:
+            pl.write(text)
