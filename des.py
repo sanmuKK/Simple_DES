@@ -1,4 +1,4 @@
-from table import ip, ip_, pc1, pc2, table_e, table_p, s_box
+from table import ip, ip_, pc1, pc2, table_e, table_p, s_box, left_rotations
 
 
 def change_hex_to_bin(s):
@@ -45,8 +45,8 @@ def generate_secret(key, r):
     key_left = current_key_bin[:28]
     key_right = current_key_bin[28:]
     for i in range(0, r):
-        key_left = move(key_left, -1)
-        key_right = move(key_right, -1)
+        key_left = move(key_left, -left_rotations[i])
+        key_right = move(key_right, -left_rotations[i])
         key = translation(key_left + key_right, pc2)
         secret_key.append(key)
 
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         keys = input('请输入加密密钥(16个十六进制数字符串):')
     else:
         keys = input('请输入解密密钥(16个十六进制数字符串):')
-    round_s = input('请输入轮数:')
+    round_s = 16
     text = main(plain_text, keys, round_s, types1)
     if types2 != 1:
         with open(path, 'w') as pl:
